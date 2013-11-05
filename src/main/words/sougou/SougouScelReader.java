@@ -6,7 +6,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
+/**
+ * 将搜狗输入法词库转换为我们需要的分词词库
+ * @author liuxueping
+ *
+ */
 public class SougouScelReader {
 
     public SougouScelMdel read(File file) throws IOException {
