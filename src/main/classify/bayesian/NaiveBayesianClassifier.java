@@ -10,18 +10,17 @@ import java.io.ObjectInputStream;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.Vector;
 
 import love.cq.util.StringUtil;
 import main.classify.common.Constants;
-import main.classify.common.TrainModel;
+import main.classify.common.ResultEvaluating;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import benguo.datam.bean.TrainModel;
 
 /**
  * 利用朴素贝叶斯算法新闻文档集做分类，采用十组交叉测试取平均值
@@ -34,8 +33,8 @@ import org.slf4j.LoggerFactory;
 public class NaiveBayesianClassifier {
 	private static final Logger log = LoggerFactory.getLogger(NaiveBayesianClassifier.class);
 	private static final DecimalFormat DF = new DecimalFormat("##.###");
-	private static int NUM_OF_CLS = 2;//分类个数
 	private static TrainModel model = readModel("");
+	
 	/**
 	 * 用贝叶斯法对测试文档集分类
 	 * 
@@ -50,18 +49,18 @@ public class NaiveBayesianClassifier {
 		String word;BufferedReader reader = null;
 		File[] testDirFiles = new File(testDir).listFiles();
 		FileWriter crWriter = new FileWriter(classifyResultFileNew);
+		log.info("Compute probability for '{}' and Autocorrection ",testDir);
 		for (int i = 0; i < testDirFiles.length; i++) {
 			File[] testSample = testDirFiles[i].listFiles();
 			for (int j = 0; j < testSample.length; j++) {
 				testFileWords.clear();
 				//分词提取特征词
-				log.info("extract keywords for test content: {}", testSample[j].getAbsolutePath());
 				reader = new BufferedReader(new FileReader(testSample[j]));
+//				reader = IOUtil.getReader(testSample[j].getAbsolutePath(), IOUtil.UTF8);
 				while ((word = reader.readLine()) != null) {
 					testFileWords.add(word);
 				}
 				//下面分别计算该测试样例相对于各类别的概率
-				log.info("compute probability for each class : {}", Constants.clsName);
 				BigDecimal maxP = new BigDecimal(0);
 				String bestCate = null;int loop = -1;
 				for (String key : Constants.clsName.keySet()) {
@@ -75,6 +74,19 @@ public class NaiveBayesianClassifier {
 					if (p.compareTo(maxP) == 1) {
 						maxP = p;
 						bestCate = key;
+					}
+				}
+				//训练集校正
+				if (!testDirFiles[i].getName().equals(bestCate)) {
+					File addFile = new File(Constants.DATA_SPECIAL_DIR + bestCate + "/" + testSample[j].getName());
+					File delFile = new File(Constants.DATA_SPECIAL_DIR + testDirFiles[i].getName() + "/" + testSample[j].getName());
+					if (addFile.exists()) {
+						addFile = new File(Constants.DATA_SPECIAL_DIR + bestCate + "/m" + testSample[j].getName());
+					}
+					if (delFile.exists()) {
+						FileUtils.copyFile(delFile, addFile);
+						delFile.delete();
+						log.info("moving file '{}' to '{}'",delFile.getAbsolutePath(),addFile.getAbsolutePath());
 					}
 				}
 				crWriter.append(testDirFiles[i].getName() + "_" + testSample[j].getName() + " " + bestCate + "\n");
@@ -123,94 +135,6 @@ public class NaiveBayesianClassifier {
 		return res;
 	}
 
-
-	/**
-	 * 根据正确类目文件和分类结果文件统计出准确率
-	 * 
-	 * @param classifyResultFile 正确类目文件
-	 * @param classifyResultFileNew 分类结果文件
-	 * @return double 分类的准确率
-	 * @throws IOException
-	 */
-	double computeAccuracy(String classifyResultFile, String classifyResultFileNew) throws IOException {
-		// TODO Auto-generated method stub
-		Map<String, String> rightCate = getMapFromResultFile(classifyResultFile);
-		Map<String, String> resultCate = getMapFromResultFile(classifyResultFileNew);
-		double rightCount = 0.0;
-		for (Map.Entry<String, String> entry : resultCate.entrySet()) {
-			if (entry.getValue().equals(rightCate.get(entry.getKey()))) {
-				rightCount++;
-			}
-		}
-		computerConfusionMatrix(rightCate, resultCate);
-		return rightCount / resultCate.size();
-	}
-
-	/**
-	 * 根据正确类目文件和分类结果文计算混淆矩阵并且输出
-	 * 
-	 * @param rightCate  正确类目对应map
-	 * @param resultCate 分类结果对应map
-	 * @return double 分类的准确率
-	 * @throws IOException
-	 */
-	private void computerConfusionMatrix(Map<String, String> rightCate, Map<String, String> resultCate) {
-		SortedSet<String> cateNames = new TreeSet<String>();
-		Set<Map.Entry<String, String>> rightCateSet = rightCate.entrySet();
-		for (Map.Entry<String, String> entry : rightCateSet) {
-			cateNames.add(entry.getValue().split("_")[0]);
-		}
-		String[] cateNamesArray = cateNames.toArray(new String[0]);
-		NUM_OF_CLS = cateNamesArray.length;
-		int[][] confusionMatrix = new int[NUM_OF_CLS][NUM_OF_CLS];//首先求出类目对应的数组索引
-		Map<String, Integer> cateNamesToIndex = new TreeMap<String, Integer>();
-		for (int i = 0; i < NUM_OF_CLS; i++) {
-			cateNamesToIndex.put(cateNamesArray[i], i);
-		}
-		for (Map.Entry<String, String> entry : rightCateSet) {
-			confusionMatrix[cateNamesToIndex.get(entry.getValue())][cateNamesToIndex.get(resultCate.get(entry.getKey()))]++;
-		}
-		//输出混淆矩阵
-		double[] hangSum = new double[NUM_OF_CLS];
-		System.out.print(format(""));
-		for (int i = 0; i < NUM_OF_CLS; i++) {
-			System.out.print(format(Constants.clsName.get(cateNamesArray[i])));
-		}
-		System.out.print(format("hit(%)"));
-		System.out.println(format("+"));
-		for (int i = 0; i < NUM_OF_CLS; i++) {
-			System.out.print(format(Constants.clsName.get(cateNamesArray[i])));
-			for (int j = 0; j < NUM_OF_CLS; j++) {
-				System.out.print(format(confusionMatrix[i][j]));
-				hangSum[i] += confusionMatrix[i][j];
-			}
-			System.out.print(DF.format(confusionMatrix[i][i] / hangSum[i]));
-			System.out.println(format("+"));
-		}
-	}
-
-	/**
-	 * 从分类结果文件中读取map
-	 * 
-	 * @param classifyResultFileNew  类目文件
-	 * @return Map<String, String> 由<文件名，类目名>保存的map
-	 * @throws IOException
-	 */
-	private Map<String, String> getMapFromResultFile(String classifyResultFileNew) throws IOException {
-		// TODO Auto-generated method stub
-		File crFile = new File(classifyResultFileNew);
-		BufferedReader reader = new BufferedReader(new FileReader(crFile));
-		Map<String, String> res = new TreeMap<String, String>();
-		String[] s;
-		String line;
-		while ((line = reader.readLine()) != null) {
-			s = line.split(" ");
-			res.put(s[0], s[1]);
-		}
-		reader.close();
-		return res;
-	}
-
 	/**
 	 * @param args
 	 * @throws Exception
@@ -219,21 +143,29 @@ public class NaiveBayesianClassifier {
 		int verifyLoop = Constants.VERIFY_LOOP;
 		//首先创建训练集和测试集
 		NaiveBayesianClassifier nbClassifier = new NaiveBayesianClassifier();
-		double[] accuracyOfEveryExp = new double[10];
+		ResultEvaluating eva = new ResultEvaluating();
+		double[] accuracyOfEveryExp = new double[verifyLoop];
 		double accuracyAvg, sum = 0;
 		for (int i = 0; i < verifyLoop; i++) {//用交叉验证法做十次分类实验，对准确率取平均值	
 			String testDir = Constants.ROOT_DIR + "TestSample" + i;
-			String classifyRightCate = Constants.ROOT_DIR + "classifyRightCate" + i + ".txt";
-			String classifyResultFileNew = Constants.ROOT_DIR + "classifyResultNew" + i + ".txt";
-			nbClassifier.doProcess(testDir, classifyResultFileNew);
-			accuracyOfEveryExp[i] = nbClassifier.computeAccuracy(classifyRightCate, classifyResultFileNew);
+			String newClassify = Constants.ROOT_DIR + "classifyResultNew" + i + ".txt";
+			File classifyRightCate = new File(Constants.ROOT_DIR + "classifyRightCate" + i + ".txt");
+			File classifyResultFileNew = new File(newClassify);
+			if (classifyResultFileNew.exists()) {
+				classifyResultFileNew.delete();
+			}
+			nbClassifier.doProcess(testDir, newClassify);
+			accuracyOfEveryExp[i] = eva.computeAccuracy(classifyRightCate, classifyResultFileNew);
 			System.out.println("The accuracy for Naive Bayesian Classifier in " + (i + 1) + "th Exp is :" + DF.format(accuracyOfEveryExp[i]) + "\n");
 		}
 		for (int i = 0; i < verifyLoop; i++) {
 			sum += accuracyOfEveryExp[i];
 		}
 		accuracyAvg = sum / verifyLoop;
-		System.out.println("The average accuracy for Naive Bayesian Classifier in all Exps is :" + DF.format(accuracyAvg));
+		System.out.println("The avg(accuracy) for Naive Bayesian Classifier in all Exps is :" + DF.format(accuracyAvg));
+		if (accuracyAvg == 1) {
+			System.exit(0);
+		}
 
 	}
 
@@ -244,13 +176,15 @@ public class NaiveBayesianClassifier {
 	 */
 	static TrainModel readModel(String modelPath) {
 		if (StringUtil.isBlank(modelPath)) {
-			modelPath = "d:/classify2.mod";
+			modelPath = Constants.ROOT_DIR + "classify.mod";
 		}
 		ObjectInputStream in = null;
 		try {
 			in = new ObjectInputStream(new FileInputStream(modelPath));
 			Object obj = in.readObject();
 			TrainModel model = (TrainModel) obj;
+			log.info("num of keywords for each class : {}",model.getCateWordsNum());
+			log.info("no-repeat keywords total of trainsets : {}", model.getTotalWordsNum());
 			return model;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -264,28 +198,10 @@ public class NaiveBayesianClassifier {
 		}
 	}
 
-	/**
-	 * 格式化输出
-	 * @param o
-	 * @return
-	 */
-	String format(Object o) {
-		int length = 10;
-		if ("+".equals(o.toString())) {
-			StringBuffer buf = new StringBuffer("\n-----------");
-			for (int i = 0; i < NUM_OF_CLS; i++) {
-				buf.append("-----------");
-			}
-			return buf.toString();
-		}
-		StringBuffer buf = new StringBuffer(o.toString());
-		for (int i = 0; i < length - o.toString().length(); i++) {
-			buf.append(" ");
-		}
-		return buf.toString();
-	}
+	
 
 	public static void main(String[] args) throws Exception {
-		readModel("");
+		NaiveBayesianClassifier nbClassifier = new NaiveBayesianClassifier();
+		nbClassifier.NaiveBayesianClassifierMain(args);
 	}
 }

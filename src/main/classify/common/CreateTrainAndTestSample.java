@@ -11,14 +11,17 @@ import java.util.TreeMap;
 import main.classify.knn.ComputeWordsVector;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**创建训练样例集合与测试样例集合
- * @author yangliu
- * @qq 772330184 
- * @mail yang.liu@pku.edu.cn
- *
+/**
+ * 创建训练样例集合与测试样例集合
+ * @author liuxueping
+ * @mail liuxueping@benguo.cn
+ * Nov 27, 2013 2:28:43 PM
  */
 public class CreateTrainAndTestSample {
+	private static final Logger log = LoggerFactory.getLogger(CreateTrainAndTestSample.class);
 	
 	//针对英文文档，需要进行词干还原
 	public void filterSpecialWords() throws IOException {
@@ -58,6 +61,14 @@ public class CreateTrainAndTestSample {
 		}
 	}
 	
+	/**
+	 * 创建测试集
+	 * @param fileDir
+	 * @param trainSamplePercent
+	 * @param indexOfSample
+	 * @param classifyResultFile
+	 * @throws IOException
+	 */
 	public void createTestSamples(String fileDir, double trainSamplePercent,int indexOfSample,String classifyResultFile) throws IOException {
 		String  targetDir;
 		FileWriter crWriter = new FileWriter(classifyResultFile);//测试样例正确类目记录文件
@@ -66,8 +77,9 @@ public class CreateTrainAndTestSample {
 			File[] sample = sampleDir[i].listFiles();
 			double testBeginIndex = indexOfSample*(sample.length * (1-trainSamplePercent));//测试样例的起始文件序号
 			double testEndIndex = (indexOfSample+1)*(sample.length * (1-trainSamplePercent));//测试样例集的结束文件序号
-			for(int j = 0;j < sample.length; j++){				
-				if(j > testBeginIndex && j< testEndIndex){//序号在规定区间内的作为测试样本，需要为测试样本生成类别-序号文件，方便统计准确率
+			int begin = (int)testBeginIndex;
+			for(int j = begin;j < sample.length; j++){
+				if(j < testEndIndex){//序号在规定区间内的作为测试样本，需要为测试样本生成类别-序号文件，方便统计准确率
 					targetDir = Constants.ROOT_DIR+"TestSample"+indexOfSample+"/"+sampleDir[i].getName();
 					crWriter.append(sampleDir[i].getName()+"_"+sample[j].getName() + " " + sampleDir[i].getName()+"\n");
 				}else{//其余作为训练样本
@@ -88,16 +100,30 @@ public class CreateTrainAndTestSample {
 	public void process() throws Exception {
 		CreateTrainAndTestSample ctt = new CreateTrainAndTestSample();
 		for (int i = 0; i < Constants.VERIFY_LOOP; i++) {
-			String TrainDir = Constants.ROOT_DIR + "TrainSample" + i;
-			String TestDir = Constants.ROOT_DIR + "TestSample" + i;
-			if (!new File(TrainDir).exists()) {
-				new File(TrainDir).mkdir();
+			File trainDir = new File(Constants.ROOT_DIR + "TrainSample" + i);
+			File testDir = new File(Constants.ROOT_DIR + "TestSample" + i);
+			log.info("create testSample '{}' and trainSample '{}'",testDir.getAbsolutePath(),trainDir.getAbsolutePath());
+			if (!trainDir.exists()) {
+				trainDir.mkdir();
+			}else {
+				FileUtils.cleanDirectory(trainDir);
 			}
-			if (!new File(TestDir).exists()) {
-				new File(TestDir).mkdir();
+			if (!testDir.exists()) {
+				testDir.mkdir();
+			}else {
+				FileUtils.cleanDirectory(testDir);
 			}
 			String classifyRightCate = Constants.ROOT_DIR + "classifyRightCate" + i + ".txt";
-			ctt.createTestSamples(Constants.ROOT_DIR+"processedSampleOnlySpecial", 0.9, i,classifyRightCate);
+			File file = new File(classifyRightCate);
+			if (file.exists()) {
+				file.delete();
+			}
+			ctt.createTestSamples(Constants.DATA_SPECIAL_DIR, 0, i,classifyRightCate);
 		}
+	}
+	
+	public static void main(String[] args) throws Exception {
+		CreateTrainAndTestSample ctt = new CreateTrainAndTestSample();
+		ctt.process();
 	}
 }

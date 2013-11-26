@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
@@ -17,15 +18,18 @@ import java.util.HashMap;
 
 import love.cq.util.StringUtil;
 import main.classify.common.Constants;
-import main.classify.common.TrainModel;
 import main.treesplit.util.IOUtil;
 
 import org.ansj.domain.Term;
+import org.ansj.recognition.NatureRecognition;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import org.ansj.util.FilterModifWord;
 import org.apache.commons.io.FileUtils;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import benguo.datam.bean.TrainModel;
 
 public class NativeBayesianModelTrain {
 	private static final Logger log = LoggerFactory.getLogger(NativeBayesianModelTrain.class);
@@ -37,9 +41,9 @@ public class NativeBayesianModelTrain {
 			return;
 		}
 		String subStrDir = strDir.substring(strDir.lastIndexOf("/"));//trainset
-		String dirTarget = Constants.ROOT_DIR+"processedSampleOnlySpecial"+subStrDir;
-		if(!new File(Constants.ROOT_DIR+"processedSampleOnlySpecial").exists()){
-			new File(Constants.ROOT_DIR+"processedSampleOnlySpecial").mkdir();
+		String dirTarget = Constants.DATA_SPECIAL_DIR + subStrDir;
+		if(!new File(Constants.DATA_SPECIAL_DIR).exists()){
+			new File(Constants.DATA_SPECIAL_DIR).mkdir();
 		}
 		File fileTarget = new File(dirTarget);
 		if(!fileTarget.exists()){
@@ -74,10 +78,10 @@ public class NativeBayesianModelTrain {
 			if (StringUtil.isBlank(line.trim())) {
 				continue;
 			}
-			List<String> lineWords = wordSeg(line);
+			List<String> lineWords = wordSeg(line.replaceAll("\\s|\n|　", ""));
 			words.addAll(lineWords);
 		}
-		FileUtils.writeLines(new File(destDir), IOUtil.GBK, words);
+		FileUtils.writeLines(new File(destDir), IOUtil.UTF8, words);
 		srcFileBR.close();
 	}
 	
@@ -90,6 +94,7 @@ public class NativeBayesianModelTrain {
 		List<String> words = new ArrayList<String>();
 		List<Term> terms = ToAnalysis.parse(content);
 		terms = FilterModifWord.modifResult(terms);//停止词过滤
+		new NatureRecognition(terms).recognition() ;
 		for (Term term : terms) {
 			String txt = term.getName();
 			String natrue = term.getNatrue().natureStr;
@@ -102,39 +107,6 @@ public class NativeBayesianModelTrain {
 		}
 		return words;
 	}
-	/**
-	 * 获得每个类目下的单词总数
-	 * 
-	 * @param trainDir 训练文档集目录
-	 * @return Map<String, Double> <目录名，单词总数>的map
-	 */
-	private Map<String, Double> getCateWordsNum(String trainDir){
-		Map<String, Double> cateWordsNum = new HashMap<String, Double>();
-		BufferedReader reader = null;
-		File[] sampleDir = new File(trainDir).listFiles();
-		try {
-			for (int i = 0; i < sampleDir.length; i++) {
-				double count = 0;
-				File[] sample = sampleDir[i].listFiles();
-				for (int j = 0; j < sample.length; j++) {
-					reader = new BufferedReader(new FileReader(sample[j]));
-					while (reader.readLine() != null) {
-						count++;
-					}
-				}
-				cateWordsNum.put(sampleDir[i].getName(), count);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}finally{
-			try {
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return cateWordsNum;
-	}
 	
 	/**
 	 * 统计某类训练样本中每个单词的出现次数
@@ -144,7 +116,6 @@ public class NativeBayesianModelTrain {
 	 *         用"类目_单词"对来索引的map,保存的val就是该类目下该单词的出现次数
 	 */
 	public Map<String, Map<String, Double>> getCateWordsProb(String strDir){
-//		Map<String, Double> cateWordsProb = new HashMap<String, Double>();
 		Map<String, Map<String, Double>> cateWordsProb = new HashMap<String, Map<String,Double>>();
 		File sampleFile = new File(strDir);
 		File[] sampleDir = sampleFile.listFiles();
@@ -156,9 +127,8 @@ public class NativeBayesianModelTrain {
 				File[] sample = sampleDir[i].listFiles();
 				for (int j = 0; j < sample.length; j++) {
 					Map<String,Double> wordsmMap = cateWordsProb.get(key);
-					reader = new BufferedReader(new FileReader(sample[j]));
+					reader = new BufferedReader(new InputStreamReader(new FileInputStream(sample[j]),"UTF-8"));
 					while ((word = reader.readLine()) != null) {
-//						String key = sampleDir[i].getName() + "_" + word;
 						if (wordsmMap.containsKey(word)) {
 							double count = wordsmMap.get(word) + 1.0;
 							wordsmMap.put(word, count);
@@ -185,14 +155,12 @@ public class NativeBayesianModelTrain {
 	 * @throws Exception
 	 */
 	public void saveModel() throws Exception {
-		String mpath = "d:/classify.mod";
+		String mpath = Constants.ROOT_DIR + "classify.mod";
 		log.info("save train model to {}",mpath);
 		Set<String> set = new HashSet<>();
-		String path = Constants.ROOT_DIR + "processedSampleOnlySpecial";
 		
-		Map<String, Map<String, Double>> cateWordsProb = getCateWordsProb(path);//保存训练样本每个类别中每个属性词的出现词数
-		Map<String, Double> cateWordsNum = new HashMap<String, Double>();//保存训练集每个类别的总词数
-//		Map<String, Double> cateWordsNum = getCateWordsNum(path);//保存训练集每个类别的总词数
+		Map<String, Map<String, Double>> cateWordsProb = getCateWordsProb(Constants.DATA_SPECIAL_DIR);
+		Map<String, Double> cateWordsNum = new HashMap<String, Double>();
 		for (Map.Entry<String, Map<String, Double>> entry : cateWordsProb.entrySet()) {
 			set.addAll(entry.getValue().keySet());
 			double wordCount = 0.0;
@@ -204,15 +172,19 @@ public class NativeBayesianModelTrain {
 		log.info("before merge : num of keywords for each class : {}", cateWordsNum.toString());
 		log.info("before merge : no-repeat keywords total of trainsets : {}", set.size());
 		TrainModel model = new TrainModel(set.size(), cateWordsNum, cateWordsProb);
-		model.setWords(set);
-		TrainModel m = mergeModel4DiffCategory(model);
+		File file = new File(mpath);
+		if (file.exists()) {
+			file.delete();//目前用于循环训练，下一步增加合并参数进行判断
+//			model.setWords(set);
+//			model = mergeModel4DiffCategory(model);
+		}
 		ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(mpath));
-		out.writeObject(m);
+		out.writeObject(model);
 		set.clear();
 		out.flush();
 		out.close();
-		FileUtils.cleanDirectory(new File(path));
-		FileUtils.cleanDirectory(new File(Constants.DATA_PRE_PROCESS_DIR));
+//		FileUtils.cleanDirectory(new File(path));
+//		FileUtils.cleanDirectory(new File(Constants.DATA_PRE_PROCESS_DIR));
 	}
 	/**
 	 * 不同类别的训练集合并
@@ -221,7 +193,7 @@ public class NativeBayesianModelTrain {
 	 * @throws Exception
 	 */
 	public TrainModel mergeModel4DiffCategory(TrainModel m) throws Exception {
-		String path = "d:/classify.mod";
+		String path = Constants.ROOT_DIR + "classify.mod";
 		ObjectInputStream in = null;
 		try {
 			in = new ObjectInputStream(new FileInputStream(path));
@@ -258,7 +230,17 @@ public class NativeBayesianModelTrain {
 	
 	public static void main(String[] args) throws Exception {
 		NativeBayesianModelTrain train = new NativeBayesianModelTrain();
-		train.dataPreProcess(Constants.DATA_PRE_PROCESS_DIR);
+//		train.dataPreProcess(Constants.DATA_PRE_PROCESS_DIR);
 		train.saveModel();
+	}
+	
+	@Test
+	public void testReadFile() throws Exception{
+		BufferedReader reader = new BufferedReader(new FileReader(new File("D:\\datamine\\featurewords\\C000001\\1.txt")));
+		String word = "";
+		while((word = reader.readLine()) != null){
+			System.out.println(word);
+		}
+		reader.close();
 	}
 }
