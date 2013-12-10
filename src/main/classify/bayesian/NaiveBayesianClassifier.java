@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import benguo.datam.bean.TrainModel;
 
 /**
+ * 分类越独立，准度越高
  * 利用朴素贝叶斯算法新闻文档集做分类，采用十组交叉测试取平均值
  * 采用多项式模型,stanford信息检索导论上面言多项式模型比伯努利模型准确度高
  * 
