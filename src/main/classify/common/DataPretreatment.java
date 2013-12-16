@@ -101,5 +101,8 @@ public class DataPretreatment {
 		return words;
 	}
 	
-	
+	public static void main(String[] args) throws Exception {
+		DataPretreatment prev = new DataPretreatment();
+		prev.process(Constants.DATA_PRE_PROCESS_DIR);
+	}
 }

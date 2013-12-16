@@ -75,7 +75,6 @@ public class ResultEvaluating {
 	private void computerConfusionMatrix(Map<String, String> rightCate, Map<String, String> resultCate) {
 		SortedSet<String> cateNames = new TreeSet<String>();
 		cateNames.addAll(Constants.clsName.keySet());
-		Set<Map.Entry<String, String>> rightCateSet = rightCate.entrySet();
 		String[] cateNamesArray = cateNames.toArray(new String[0]);
 		NUM_OF_CLS = cateNamesArray.length;
 		int[][] confusionMatrix = new int[NUM_OF_CLS][NUM_OF_CLS];//首先求出类目对应的数组索引
@@ -83,7 +82,7 @@ public class ResultEvaluating {
 		for (int i = 0; i < NUM_OF_CLS; i++) {
 			cateNamesToIndex.put(cateNamesArray[i], i);
 		}
-		for (Map.Entry<String, String> entry : rightCateSet) {
+		for (Map.Entry<String, String> entry : rightCate.entrySet()) {
 			confusionMatrix[cateNamesToIndex.get(entry.getValue())][cateNamesToIndex.get(resultCate.get(entry.getKey()))]++;
 		}
 		//输出混淆矩阵
