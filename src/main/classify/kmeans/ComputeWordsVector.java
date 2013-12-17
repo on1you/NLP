@@ -11,8 +11,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.Iterator;
 import java.util.TreeSet;
+
+import main.classify.common.Constants;
 
 /**
  * 计算文档的属性向量，将所有文档向量化
@@ -23,12 +24,11 @@ import java.util.TreeSet;
  * 
  */
 public class ComputeWordsVector {
-
+	private static int NUM_OF_CLS = 2;//分类个数
 	/**
 	 * 计算文档的TF-IDF属性向量,返回Map<文件名，Map<特征词，TF-IDF值>>
 	 * 
-	 * @param testSampleDir
-	 *            处理好的聚类样本测试样例集合
+	 * @param testSampleDir 处理好的聚类样本测试样例集合
 	 * @return Map<String,Map<String,Double>> 所有测试样例的属性向量构成的map
 	 * @throws IOException
 	 */
@@ -75,20 +75,15 @@ public class ComputeWordsVector {
 	/**
 	 * 输出测试样例map内容，用于测试
 	 * 
-	 * @param SortedMap
-	 *            <String,Double> 属性词典
+	 * @param SortedMap <String,Double> 属性词典
 	 * @throws IOException
 	 */
 	void printTestSampleMap(Map<String, Map<String, Double>> allTestSampleMap) throws IOException {
 		File outPutFile = new File("F:/DataMiningSample/KmeansClusterResult/allTestSampleMap.txt");
 		FileWriter outPutFileWriter = new FileWriter(outPutFile);
-		Set<Map.Entry<String, Map<String, Double>>> allWords = allTestSampleMap.entrySet();
-		for (Iterator<Map.Entry<String, Map<String, Double>>> it = allWords.iterator(); it.hasNext();) {
-			Map.Entry<String, Map<String, Double>> me = it.next();
+		for (Map.Entry<String, Map<String, Double>> me : allTestSampleMap.entrySet()) {
 			outPutFileWriter.append(me.getKey() + " ");
-			Set<Map.Entry<String, Double>> vecSet = me.getValue().entrySet();
-			for (Iterator<Map.Entry<String, Double>> jt = vecSet.iterator(); jt.hasNext();) {
-				Map.Entry<String, Double> ne = jt.next();
+			for (Map.Entry<String, Double> ne : me.getValue().entrySet()) {
 				outPutFileWriter.append(ne.getKey() + " " + ne.getValue() + " ");
 			}
 			outPutFileWriter.append("\n");
@@ -100,7 +95,7 @@ public class ComputeWordsVector {
 	/**
 	 * 统计每个词的总的出现次数，返回出现次数大于n次的词汇构成最终的属性词典
 	 * 
-	 * @param strDir  处理好的newsgroup文件目录的绝对路径
+	 * @param strDir 处理好的newsgroup文件目录的绝对路径
 	 * @throws IOException
 	 */
 	public Map<String, Double> countWords(String strDir) throws IOException {
@@ -126,9 +121,7 @@ public class ComputeWordsVector {
 
 		//去除停用词后，先用DF法选取特征词，后面再加入特征词的选取算法
 		Map<String, Double> newWordMap = new HashMap<String, Double>();
-		Set<Map.Entry<String, Double>> allWords = wordMap.entrySet();
-		for (Iterator<Map.Entry<String, Double>> it = allWords.iterator(); it.hasNext();) {
-			Map.Entry<String, Double> me = it.next();
+		for (Map.Entry<String, Double> me : wordMap.entrySet()) {
 			if (me.getValue() > 50) {//DF法降维
 				newWordMap.put(me.getKey(), me.getValue());
 			}
@@ -197,9 +190,7 @@ public class ComputeWordsVector {
 		//返回属性词典
 		String[] terms = new String[wordMap.size()];
 		int i = 0;
-		Set<Map.Entry<String, Double>> allWords = wordMap.entrySet();
-		for (Iterator<Map.Entry<String, Double>> it = allWords.iterator(); it.hasNext();) {
-			Map.Entry<String, Double> me = it.next();
+		for (Map.Entry<String, Double> me : wordMap.entrySet()) {
 			terms[i] = me.getKey();
 			i++;
 		}
@@ -210,7 +201,7 @@ public class ComputeWordsVector {
 	 * 评估函数根据聚类结果文件统计熵和混淆矩阵
 	 * 
 	 * @param clusterResultFile 聚类结果文件
-	 * @param K  聚类数目
+	 * @param K 聚类数目
 	 * @return double 聚类结果的熵值
 	 * @throws IOException
 	 */
@@ -239,21 +230,16 @@ public class ComputeWordsVector {
 	 * @throws IOException
 	 */
 	private double computeEntropyAndConfuMatrix(Map<String, String> rightCate, Map<String, String> resultCate, int K) {
-		int[][] confusionMatrix = new int[K][20];//K行20列，[i,j]表示聚类i中属于类目j的文件数
-		//首先求出类目对应的数组索引
 		SortedSet<String> cateNames = new TreeSet<String>();
-		Set<Map.Entry<String, String>> rightCateSet = rightCate.entrySet();
-		for (Iterator<Map.Entry<String, String>> it = rightCateSet.iterator(); it.hasNext();) {
-			Map.Entry<String, String> me = it.next();
-			cateNames.add(me.getValue());
-		}
+		cateNames.addAll(Constants.clsName.keySet());
 		String[] cateNamesArray = cateNames.toArray(new String[0]);
+		NUM_OF_CLS = cateNamesArray.length;
+		int[][] confusionMatrix = new int[K][NUM_OF_CLS];//首先求出类目对应的数组索引
 		Map<String, Integer> cateNamesToIndex = new TreeMap<String, Integer>();
-		for (int i = 0; i < cateNamesArray.length; i++) {
+		for (int i = 0; i < NUM_OF_CLS; i++) {
 			cateNamesToIndex.put(cateNamesArray[i], i);
 		}
-		for (Iterator<Map.Entry<String, String>> it = rightCateSet.iterator(); it.hasNext();) {
-			Map.Entry<String, String> me = it.next();
+		for (Map.Entry<String, String> me : rightCate.entrySet()) {
 			confusionMatrix[Integer.parseInt(resultCate.get(me.getKey()))][cateNamesToIndex.get(me.getValue())]++;
 		}
 		//输出混淆矩阵
@@ -261,13 +247,13 @@ public class ComputeWordsVector {
 		double[] everyClusterEntropy = new double[K];//记录每个聚类的熵
 		double clusterEntropy = 0;
 		System.out.print(format(""));
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < NUM_OF_CLS; i++) {
 			System.out.print(format(i));
 		}
 		System.out.println(format("+"));
 		for (int i = 0; i < K; i++) {
 			System.out.print(format(i));
-			for (int j = 0; j < 5; j++) {
+			for (int j = 0; j < NUM_OF_CLS; j++) {
 				clusterSum[i] += confusionMatrix[i][j];
 				System.out.print(format(confusionMatrix[i][j]));
 			}
@@ -277,7 +263,7 @@ public class ComputeWordsVector {
 
 		for (int i = 0; i < K; i++) {
 			if (clusterSum[i] != 0) {
-				for (int j = 0; j < 5; j++) {
+				for (int j = 0; j < NUM_OF_CLS; j++) {
 					double p = (double) confusionMatrix[i][j] / clusterSum[i];
 					if (p != 0) {
 						everyClusterEntropy[i] += -p * Math.log(p);

@@ -2,11 +2,11 @@
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
+
+import main.classify.common.Constants;
 
 /**
  * Kmeans聚类算法的实现类，将newsgroups文档集聚成10类、20类、30类
@@ -34,9 +34,7 @@ public class KmeansCluster {
 		//0、首先获取allTestSampleMap所有文件名顺序组成的数组
 		String[] testSampleNames = new String[allTestSampleMap.size()];
 		int count = 0, tsLength = allTestSampleMap.size();
-		Set<Map.Entry<String, Map<String, Double>>> allTestSampeleMapSet = allTestSampleMap.entrySet();
-		for (Iterator<Map.Entry<String, Map<String, Double>>> it = allTestSampeleMapSet.iterator(); it.hasNext();) {
-			Map.Entry<String, Map<String, Double>> me = it.next();
+		for (Map.Entry<String, Map<String, Double>> me : allTestSampleMap.entrySet()) {
 			testSampleNames[count++] = me.getKey();
 		}
 		//1、初始点的选择算法是随机选择或者是均匀分开选择，这里采用后者
@@ -115,12 +113,9 @@ public class KmeansCluster {
 		double memberNum = (double) clusterM.size();
 		Map<String, Double> newMeanMap = new TreeMap<String, Double>();
 		Map<String, Double> currentMemMap = new TreeMap<String, Double>();
-		for (Iterator<Integer> it = clusterM.iterator(); it.hasNext();) {
-			int me = it.next();
+		for (Integer me : clusterM) {
 			currentMemMap = allTestSampleMap.get(testSampleNames[me]);
-			Set<Map.Entry<String, Double>> currentMemMapSet = currentMemMap.entrySet();
-			for (Iterator<Map.Entry<String, Double>> jt = currentMemMapSet.iterator(); jt.hasNext();) {
-				Map.Entry<String, Double> ne = jt.next();
+			for (Map.Entry<String, Double> ne : currentMemMap.entrySet()) {
 				if (newMeanMap.containsKey(ne.getKey())) {
 					newMeanMap.put(ne.getKey(), newMeanMap.get(ne.getKey()) + ne.getValue());
 				} else {
@@ -128,9 +123,7 @@ public class KmeansCluster {
 				}
 			}
 		}
-		Set<Map.Entry<String, Double>> newMeanMapSet = newMeanMap.entrySet();
-		for (Iterator<Map.Entry<String, Double>> jt = newMeanMapSet.iterator(); jt.hasNext();) {
-			Map.Entry<String, Double> ne = jt.next();
+		for (Map.Entry<String, Double> ne : newMeanMap.entrySet()) {
 			newMeanMap.put(ne.getKey(), newMeanMap.get(ne.getKey()) / memberNum);
 		}
 		return newMeanMap;
@@ -176,9 +169,7 @@ public class KmeansCluster {
 	 */
 	private double computeSim(Map<String, Double> testWordTFMap, Map<String, Double> trainWordTFMap) {
 		double mul = 0, testAbs = 0, trainAbs = 0;
-		Set<Map.Entry<String, Double>> testWordTFMapSet = testWordTFMap.entrySet();
-		for (Iterator<Map.Entry<String, Double>> it = testWordTFMapSet.iterator(); it.hasNext();) {
-			Map.Entry<String, Double> me = it.next();
+		for (Map.Entry<String, Double> me : testWordTFMap.entrySet()) {
 			if (trainWordTFMap.containsKey(me.getKey())) {
 				mul += me.getValue() * trainWordTFMap.get(me.getKey());
 			}
@@ -186,9 +177,7 @@ public class KmeansCluster {
 		}
 		testAbs = Math.sqrt(testAbs);
 		
-		Set<Map.Entry<String, Double>> trainWordTFMapSet = trainWordTFMap.entrySet();
-		for (Iterator<Map.Entry<String, Double>> it = trainWordTFMapSet.iterator(); it.hasNext();) {
-			Map.Entry<String, Double> me = it.next();
+		for (Map.Entry<String, Double> me : trainWordTFMap.entrySet()) {
 			trainAbs += me.getValue() * me.getValue();
 		}
 		trainAbs = Math.sqrt(trainAbs);
@@ -207,10 +196,8 @@ public class KmeansCluster {
 		int count = 0, i = 0;
 		Map<Integer, Map<String, Double>> meansMap = new TreeMap<Integer, Map<String, Double>>();//保存K个聚类中心点向量
 		System.out.println("本次聚类的初始点对应的文件为：");
-		Set<Map.Entry<String, Map<String, Double>>> allTestSampleMapSet = allTestSampleMap.entrySet();
-		for (Iterator<Map.Entry<String, Map<String, Double>>> it = allTestSampleMapSet.iterator(); it.hasNext();) {
-			Map.Entry<String, Map<String, Double>> me = it.next();
-			if (count == i * allTestSampleMapSet.size() / K) {
+		for (Map.Entry<String, Map<String, Double>> me : allTestSampleMap.entrySet()) {
+			if (count == i * allTestSampleMap.size() / K) {
 				meansMap.put(i, me.getValue());
 				System.out.println(me.getKey() + " map size is " + me.getValue().size());
 				i++;
@@ -229,9 +216,7 @@ public class KmeansCluster {
 	 */
 	private void printClusterResult(Map<String, Integer> kmeansClusterResult, String kmeansClusterResultFile) throws IOException {
 		FileWriter resWriter = new FileWriter(kmeansClusterResultFile);
-		Set<Map.Entry<String, Integer>> kmeansClusterResultSet = kmeansClusterResult.entrySet();
-		for (Iterator<Map.Entry<String, Integer>> it = kmeansClusterResultSet.iterator(); it.hasNext();) {
-			Map.Entry<String, Integer> me = it.next();
+		for (Map.Entry<String, Integer> me : kmeansClusterResult.entrySet()) {
 			resWriter.append(me.getKey() + " " + me.getValue() + "\n");
 		}
 		resWriter.flush();
@@ -245,7 +230,7 @@ public class KmeansCluster {
 		Map<String, Map<String, Double>> allTestSampleMap = computeV.computeTFMultiIDF(testSampleDir);
 		for (int i = 0; i < K.length; i++) {
 			System.out.println("开始聚类，聚成" + K[i] + "类");
-			String KmeansClusterResultFile = "D:/hotmine/testmine/KmeansClusterResult/";
+			String KmeansClusterResultFile = Constants.DATA_CLUSTER_RESULT;
 			Map<String, Integer> KmeansClusterResult = new TreeMap<String, Integer>();
 			KmeansClusterResult = doProcess(allTestSampleMap, K[i]);
 			KmeansClusterResultFile += K[i];
