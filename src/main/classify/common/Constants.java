@@ -6,11 +6,12 @@ import java.util.Map;
 
 import main.treesplit.util.IOUtil;
 
+import org.ansj.app.newWord.LearnTool;
 import org.ansj.util.FilterModifWord;
 
 public class Constants {
 	public static final String COM_DIR = "d:/hotmine/";//固定测试目录
-	public static final String ROOT_DIR = COM_DIR + "posnegmine/";//测试根目录
+	public static final String ROOT_DIR = COM_DIR + "corpus/";//测试根目录
 	public static final String DATA_PRE_PROCESS_DIR = ROOT_DIR + "trainset/";//源数据目录
 	public static final String DATA_SPECIAL_DIR = ROOT_DIR + "featurewords/";//特征词提取结果目录
 	public static final String DATA_CLUSTER_DIR = ROOT_DIR + "clusterTestSample/";//聚类测试集目录
@@ -18,7 +19,7 @@ public class Constants {
 	public static final int VERIFY_LOOP = 1;//分类交叉验证次数
 	public static Map<String, String> clsName = new HashMap<String, String>();//类别映射表
 	public static Map<String, Double> weight = new HashMap<String, Double>();//词性权重
-	
+	public static LearnTool tool = new LearnTool();
 	static{
 		try {
 			weight.put("i", 0.6);
@@ -38,6 +39,9 @@ public class Constants {
 			weight.put("ng", 0.2);
 			weight.put("nt", 0.6);
 			weight.put("b", 0.4);
+			
+			tool.isCompany = false;
+			tool.isForeignName = false;
 			//类别映射表
 			BufferedReader reader1 = IOUtil.getReader(ROOT_DIR + "class.txt", IOUtil.GBK);
 			String cls = null;

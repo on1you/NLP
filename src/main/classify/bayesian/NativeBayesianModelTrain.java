@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import main.classify.common.Constants;
+import main.classify.common.DataPretreatment;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -145,10 +146,32 @@ public class NativeBayesianModelTrain {
 		return null;
 	}
 	
+	public void readModel(){
+		String path = Constants.ROOT_DIR + "classify.mod";
+		ObjectInputStream in = null;
+		try {
+			in = new ObjectInputStream(new FileInputStream(path));
+			Object obj = in.readObject();
+			TrainModel model = (TrainModel) obj;
+			log.info("after merge : num of keywords for each class : {}",  model.getCateWordsNum().toString());
+			log.info("after merge : no-repeat keywords total of trainsets : {}", model.getTotalWordsNum());
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				in.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	public static void main(String[] args) throws Exception {
+		DataPretreatment prev = new DataPretreatment();
+//		prev.process(Constants.DATA_PRE_PROCESS_DIR);
+		
 		NativeBayesianModelTrain train = new NativeBayesianModelTrain();
-//		train.dataPreProcess(Constants.DATA_PRE_PROCESS_DIR);
-		train.saveModel();
+		train.readModel();
+//		train.saveModel();
 	}
 	
 	@Test

@@ -14,8 +14,8 @@ public class BayesClassifyDriver {
 	
 	public static void main(String[] args) throws Exception {
 		int loop = 1;
-		NativeBayesianModelTrain train = new NativeBayesianModelTrain();
 		DataPretreatment prev = new DataPretreatment();
+		NativeBayesianModelTrain train = new NativeBayesianModelTrain();
 		CreateTrainAndTestSample ctt = new CreateTrainAndTestSample();
 		NaiveBayesianClassifier nbClassifier = new NaiveBayesianClassifier();
 		while(true){
