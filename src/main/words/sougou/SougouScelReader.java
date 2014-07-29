@@ -1,4 +1,4 @@
-package main.words.sougou;
+﻿package main.words.sougou;
 
 import java.io.*;
 import java.net.URL;
@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 /**
- * 将搜狗输入法词库转换为我们需要的分词词库
+ * 将搜狗输入法词库转换为分词词库
  * @author liuxueping
  *
  */
